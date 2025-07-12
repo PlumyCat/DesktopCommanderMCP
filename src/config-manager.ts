@@ -10,6 +10,7 @@ export interface ServerConfig {
   blockedCommands?: string[];
   defaultShell?: string;
   allowedDirectories?: string[];
+  requirePermissionPrompt?: boolean; // Control permission prompting for restricted paths
   telemetryEnabled?: boolean; // New field for telemetry control
   fileWriteLineLimit?: number; // Line limit for file write operations
   fileReadLineLimit?: number; // Default line limit for file read operations (changed from character-based)
@@ -56,12 +57,33 @@ class ConfigManager {
       }
       this.config['version'] = VERSION;
 
+      // Ensure secure default directories exist
+      await this.ensureSecureDirectories();
+
       this.initialized = true;
     } catch (error) {
       console.error('Failed to initialize config:', error);
       // Fall back to default config in memory
       this.config = this.getDefaultConfig();
       this.initialized = true;
+    }
+  }
+
+  /**
+   * Ensure secure default directories exist
+   */
+  private async ensureSecureDirectories() {
+    const defaultDirs = [
+      path.join(os.homedir(), '.claude-server-commander', 'workspace'),
+      path.join(os.homedir(), 'Documents', 'claude-projects')
+    ];
+
+    for (const dir of defaultDirs) {
+      try {
+        await mkdir(dir, { recursive: true });
+      } catch (error) {
+        console.warn(`Could not create secure directory ${dir}:`, error);
+      }
     }
   }
 
@@ -88,7 +110,7 @@ class ConfigManager {
         "dd",        // Convert and copy files, can write directly to disks
         "parted",    // Disk partition manipulator
         "diskpart",  // Windows disk partitioning utility
-        
+
         // System administration and user management
         "sudo",      // Execute command as superuser
         "su",        // Substitute user identity
@@ -99,19 +121,19 @@ class ConfigManager {
         "groupadd",  // Create a new group
         "chsh",      // Change login shell
         "visudo",    // Edit the sudoers file
-        
+
         // System control
         "shutdown",  // Shutdown the system
         "reboot",    // Restart the system
         "halt",      // Stop the system
         "poweroff",  // Power off the system
         "init",      // Change system runlevel
-        
+
         // Network and security
         "iptables",  // Linux firewall administration
         "firewall",  // Generic firewall command
         "netsh",     // Windows network configuration
-        
+
         // Windows system commands
         "sfc",       // System File Checker
         "bcdedit",   // Boot Configuration Data editor
@@ -122,8 +144,14 @@ class ConfigManager {
         "cipher",    // Encrypt/decrypt files or wipe data
         "takeown"    // Take ownership of files
       ],
-      defaultShell: os.platform() === 'win32' ? 'powershell.exe' : 'bash',
-      allowedDirectories: [],
+      defaultShell: os.platform() === 'win32' ? 'pwsh' : 'bash',
+      allowedDirectories: [
+        path.join(os.homedir(), '.claude-server-commander', 'workspace'),
+        path.join(os.homedir(), 'Documents', 'claude-projects'),
+        os.tmpdir(),
+        'C:\\projects'
+      ],
+      requirePermissionPrompt: true,
       telemetryEnabled: true, // Default to opt-out approach (telemetry on by default)
       fileWriteLineLimit: 50,  // Default line limit for file write operations (changed from 100)
       fileReadLineLimit: 1000  // Default line limit for file read operations (changed from character-based)
@@ -163,17 +191,40 @@ class ConfigManager {
    */
   async setValue(key: string, value: any): Promise<void> {
     await this.init();
-    
+
+    // Special security validation for allowedDirectories
+    if (key === 'allowedDirectories') {
+      const { validateAllowedDirectory } = await import('./utils/security.js');
+
+      // Ensure value is an array
+      if (!Array.isArray(value)) {
+        throw new Error('allowedDirectories must be an array');
+      }
+
+      // Prevent empty array (insecure)
+      if (value.length === 0) {
+        throw new Error('allowedDirectories cannot be empty for security reasons');
+      }
+
+      // Validate each directory
+      for (const dir of value) {
+        const validation = validateAllowedDirectory(dir);
+        if (!validation.success) {
+          throw new Error(`Invalid directory "${dir}": ${validation.error}`);
+        }
+      }
+    }
+
     // Special handling for telemetry opt-out
     if (key === 'telemetryEnabled' && value === false) {
       // Get the current value before changing it
       const currentValue = this.config[key];
-      
+
       // Only capture the opt-out event if telemetry was previously enabled
       if (currentValue !== false) {
         // Import the capture function dynamically to avoid circular dependencies
         const { capture } = await import('./utils/capture.js');
-        
+
         // Send a final telemetry event noting that the user has opted out
         // This helps us track opt-out rates while respecting the user's choice
         await capture('server_telemetry_opt_out', {
@@ -182,7 +233,7 @@ class ConfigManager {
         });
       }
     }
-    
+
     // Update the value
     this.config[key] = value;
     await this.saveConfig();

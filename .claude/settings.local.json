@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm update)",
+      "Bash(npm remove:*)",
+      "Bash(npm run build:*)",
+      "Bash(node:*)",
+      "Bash(find:*)"
+    ],
+    "deny": []
+  }
+}

@@ -4,9 +4,9 @@ import os from 'os';
 import fetch from 'cross-fetch';
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
-import {capture} from '../utils/capture.js';
-import {withTimeout} from '../utils/withTimeout.js';
-import {configManager} from '../config-manager.js';
+import { capture } from '../utils/capture.js';
+import { withTimeout } from '../utils/withTimeout.js';
+import { configManager } from '../config-manager.js';
 
 // CONSTANTS SECTION - Consolidate all timeouts and thresholds
 const FILE_OPERATION_TIMEOUTS = {
@@ -90,36 +90,36 @@ async function getDefaultReadLength(): Promise<number> {
 // Initialize allowed directories from configuration
 async function getAllowedDirs(): Promise<string[]> {
     try {
-        let allowedDirectories;
         const config = await configManager.getConfig();
         if (config.allowedDirectories && Array.isArray(config.allowedDirectories)) {
-            allowedDirectories = config.allowedDirectories;
+            return config.allowedDirectories;
         } else {
-            // Fall back to default directories if not configured
-            allowedDirectories = [
-                os.homedir()   // User's home directory
+            // Use secure defaults - this should not happen with new config defaults
+            const secureDefaults = [
+                path.join(os.homedir(), '.claude-server-commander', 'workspace'),
+                path.join(os.homedir(), 'Documents', 'claude-projects'),
+                os.tmpdir()
             ];
-            // Update config with default
-            await configManager.setValue('allowedDirectories', allowedDirectories);
+            await configManager.setValue('allowedDirectories', secureDefaults);
+            return secureDefaults;
         }
-        return allowedDirectories;
     } catch (error) {
         console.error('Failed to initialize allowed directories:', error);
-        // Keep the default permissive path
+        // Return secure defaults instead of empty array
+        return [
+            path.join(os.homedir(), '.claude-server-commander', 'workspace'),
+            path.join(os.homedir(), 'Documents', 'claude-projects'),
+            os.tmpdir()
+        ];
     }
-    return [];
 }
 
-// Normalize all paths consistently
+// Import Windows path utilities
+import { normalizeWindowsPath, expandHome, toAbsolutePath } from '../utils/windowsPathFix.js';
+
+// Normalize all paths consistently without case conversion for Windows compatibility
 function normalizePath(p: string): string {
-    return path.normalize(expandHome(p)).toLowerCase();
-}
-
-function expandHome(filepath: string): string {
-    if (filepath.startsWith('~/') || filepath === '~') {
-        return path.join(os.homedir(), filepath.slice(1));
-    }
-    return filepath;
+    return normalizeWindowsPath(expandHome(p));
 }
 
 /**
@@ -155,44 +155,24 @@ async function validateParentDirectories(directoryPath: string): Promise<boolean
  * @returns boolean True if path is allowed
  */
 async function isPathAllowed(pathToCheck: string): Promise<boolean> {
-    // If root directory is allowed, all paths are allowed
     const allowedDirectories = await getAllowedDirs();
-    if (allowedDirectories.includes('/') || allowedDirectories.length === 0) {
-        return true;
-    }
 
-    let normalizedPathToCheck = normalizePath(pathToCheck);
-    if(normalizedPathToCheck.slice(-1) === path.sep) {
-        normalizedPathToCheck = normalizedPathToCheck.slice(0, -1);
-    }
-
-    // Check if the path is within any allowed directory
-    const isAllowed = allowedDirectories.some(allowedDir => {
-        let normalizedAllowedDir = normalizePath(allowedDir);
-        if(normalizedAllowedDir.slice(-1) === path.sep) {
-            normalizedAllowedDir = normalizedAllowedDir.slice(0, -1);
-        }
-
-        // Check if path is exactly the allowed directory
-        if (normalizedPathToCheck === normalizedAllowedDir) {
-            return true;
-        }
-
-        // Check if path is a subdirectory of the allowed directory
-        // Make sure to add a separator to prevent partial directory name matches
-        // e.g. /home/user vs /home/username
-        const subdirCheck = normalizedPathToCheck.startsWith(normalizedAllowedDir + path.sep);
-        if (subdirCheck) {
-            return true;
-        }
-
-        // If allowed directory is the root (C:\ on Windows), allow access to the entire drive
-        if (normalizedAllowedDir === 'c:' && process.platform === 'win32') {
-            return normalizedPathToCheck.startsWith('c:');
-        }
-
+    // No longer allow empty allowedDirectories as a bypass
+    if (allowedDirectories.length === 0) {
         return false;
-    });
+    }
+
+    // Import security utilities
+    const { isPathAllowed: secureIsPathAllowed, analyzePathSecurity } = await import('../utils/security.js');
+
+    // Use enhanced security validation
+    const isAllowed = secureIsPathAllowed(pathToCheck, allowedDirectories);
+
+    if (!isAllowed) {
+        // Log security analysis for debugging
+        const analysis = analyzePathSecurity(pathToCheck);
+        console.warn(`Path access denied: ${pathToCheck}`, analysis);
+    }
 
     return isAllowed;
 }
@@ -208,13 +188,8 @@ async function isPathAllowed(pathToCheck: string): Promise<boolean> {
  */
 export async function validatePath(requestedPath: string): Promise<string> {
     const validationOperation = async (): Promise<string> => {
-        // Expand home directory if present
-        const expandedPath = expandHome(requestedPath);
-
-        // Convert to absolute path
-        const absolute = path.isAbsolute(expandedPath)
-            ? path.resolve(expandedPath)
-            : path.resolve(process.cwd(), expandedPath);
+        // Use the improved path handling for Windows
+        const absolute = toAbsolutePath(requestedPath);
 
         // Check if path is allowed
         if (!(await isPathAllowed(absolute))) {
@@ -283,7 +258,7 @@ export async function readFileFromUrl(url: string): Promise<FileResult> {
     // Set up fetch with timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FILE_OPERATION_TIMEOUTS.URL_FETCH);
-    
+
     try {
         const response = await fetch(url, {
             signal: controller.signal
@@ -336,8 +311,8 @@ export async function readFileFromUrl(url: string): Promise<FileResult> {
  * @returns Enhanced status message string
  */
 function generateEnhancedStatusMessage(
-    readLines: number, 
-    offset: number, 
+    readLines: number,
+    offset: number,
     totalLines?: number,
     isNegativeOffset: boolean = false
 ): string {
@@ -353,7 +328,7 @@ function generateEnhancedStatusMessage(
         if (totalLines !== undefined) {
             const endLine = offset + readLines;
             const remainingLines = Math.max(0, totalLines - endLine);
-            
+
             if (offset === 0) {
                 return `[Reading ${readLines} lines from start (total: ${totalLines} lines, ${remainingLines} remaining)]`;
             } else {
@@ -618,7 +593,7 @@ export async function readFileFromDisk(filePath: string, offset: number = 0, len
     if (!filePath || typeof filePath !== 'string') {
         throw new Error('Invalid file path provided');
     }
-    
+
     // Get default length from config if not provided
     if (length === undefined) {
         length = await getDefaultReadLength();
@@ -643,13 +618,13 @@ export async function readFileFromDisk(filePath: string, offset: number = 0, len
     } catch (error) {
         console.error('error catch ' + error);
         const errorMessage = error instanceof Error ? error.message : String(error);
-        capture('server_read_file_error', {error: errorMessage, fileExtension: fileExtension});
+        capture('server_read_file_error', { error: errorMessage, fileExtension: fileExtension });
         // If we can't stat the file, continue anyway and let the read operation handle errors
     }
 
     // Detect the MIME type based on file extension
     const { mimeType, isImage } = await getMimeTypeInfo(validPath);
-    
+
     // Use withTimeout to handle potential hangs
     const readOperation = async () => {
         if (isImage) {
@@ -865,10 +840,47 @@ export async function moveFile(sourcePath: string, destinationPath: string): Pro
     await fs.rename(validSourcePath, validDestPath);
 }
 
-export async function searchFiles(rootPath: string, pattern: string): Promise<string[]> {
-    const results: string[] = [];
+export async function searchFiles(
+    rootPath: string,
+    pattern: string,
+    options: {
+        maxResults?: number;
+        maxDepth?: number;
+        timeoutMs?: number;
+        excludeDirs?: string[];
+    } = {}
+): Promise<string[]> {
+    const {
+        maxResults = 1000,
+        maxDepth = 10,
+        timeoutMs = 10000, // Reduced from 30s to 10s
+        excludeDirs = ['node_modules', '.git', 'dist', '.cache', 'tmp']
+    } = options;
 
-    async function search(currentPath: string): Promise<void> {
+    const results: string[] = [];
+    let searchCancelled = false;
+    const startTime = Date.now();
+
+    // Create timeout mechanism
+    const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+            searchCancelled = true;
+            reject(new Error(`Search operation timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+    });
+
+    async function search(currentPath: string, depth: number = 0): Promise<void> {
+        // Check cancellation and limits
+        if (searchCancelled || results.length >= maxResults || depth > maxDepth) {
+            return;
+        }
+
+        // Check timeout periodically
+        if (Date.now() - startTime > timeoutMs) {
+            searchCancelled = true;
+            return;
+        }
+
         let entries;
         try {
             entries = await fs.readdir(currentPath, { withFileTypes: true });
@@ -876,19 +888,59 @@ export async function searchFiles(rootPath: string, pattern: string): Promise<st
             return; // Skip this directory on error
         }
 
-        for (const entry of entries) {
+        // Process files first, then directories (for better user experience)
+        const files = entries.filter(entry => entry.isFile());
+        const directories = entries.filter(entry => entry.isDirectory());
+
+        // Process files
+        for (const entry of files) {
+            if (searchCancelled || results.length >= maxResults) {
+                break;
+            }
+
             const fullPath = path.join(currentPath, entry.name);
 
             try {
                 await validatePath(fullPath);
 
-                if (entry.name.toLowerCase().includes(pattern.toLowerCase())) {
+                // Use case-insensitive search on Windows, case-sensitive on other platforms
+                const searchName = os.platform() === 'win32' ? entry.name.toLowerCase() : entry.name;
+                const searchPattern = os.platform() === 'win32' ? pattern.toLowerCase() : pattern;
+
+                if (searchName.includes(searchPattern)) {
+                    results.push(fullPath);
+                }
+            } catch (error) {
+                continue;
+            }
+        }
+
+        // Process directories recursively
+        for (const entry of directories) {
+            if (searchCancelled || results.length >= maxResults || depth >= maxDepth) {
+                break;
+            }
+
+            // Skip excluded directories
+            if (excludeDirs.includes(entry.name)) {
+                continue;
+            }
+
+            const fullPath = path.join(currentPath, entry.name);
+
+            try {
+                await validatePath(fullPath);
+
+                // Also check if directory name matches pattern
+                const searchName = os.platform() === 'win32' ? entry.name.toLowerCase() : entry.name;
+                const searchPattern = os.platform() === 'win32' ? pattern.toLowerCase() : pattern;
+
+                if (searchName.includes(searchPattern)) {
                     results.push(fullPath);
                 }
 
-                if (entry.isDirectory()) {
-                    await search(fullPath);
-                }
+                // Recurse into directory
+                await search(fullPath, depth + 1);
             } catch (error) {
                 continue;
             }
@@ -898,22 +950,45 @@ export async function searchFiles(rootPath: string, pattern: string): Promise<st
     try {
         // Validate root path before starting search
         const validPath = await validatePath(rootPath);
-        await search(validPath);
 
-        // Log only the count of found files, not their paths
+        // Race between search operation and timeout
+        await Promise.race([
+            search(validPath),
+            timeoutPromise
+        ]);
+
+        // Log search performance metrics
+        const executionTime = Date.now() - startTime;
         capture('server_search_files_complete', {
             resultsCount: results.length,
-            patternLength: pattern.length
+            patternLength: pattern.length,
+            executionTimeMs: executionTime,
+            maxResults: maxResults,
+            maxDepth: maxDepth,
+            timeoutMs: timeoutMs,
+            wasTimeout: searchCancelled
         });
 
         return results;
     } catch (error) {
+        // Check if it was a timeout
+        const isTimeout = error instanceof Error && error.message.includes('timed out');
+
         // For telemetry only - sanitize error info
         capture('server_search_files_error', {
             errorType: error instanceof Error ? error.name : 'Unknown',
-            error: 'Error with root path',
-            isRootPathError: true
+            error: isTimeout ? 'Search timeout' : 'Error with root path',
+            isRootPathError: !isTimeout,
+            isTimeout: isTimeout,
+            executionTimeMs: Date.now() - startTime,
+            partialResultsCount: results.length
         });
+
+        // If it was a timeout but we have partial results, return them with a warning
+        if (isTimeout && results.length > 0) {
+            console.warn(`Search timed out but returning ${results.length} partial results`);
+            return results;
+        }
 
         // Re-throw the original error for the caller
         throw error;
@@ -940,7 +1015,7 @@ export async function getFileInfo(filePath: string): Promise<Record<string, any>
         try {
             // Get MIME type information
             const { mimeType, isImage } = await getMimeTypeInfo(validPath);
-            
+
             // Only count lines for non-image, likely text files
             if (!isImage) {
                 const content = await fs.readFile(validPath, 'utf8');

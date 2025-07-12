@@ -11,10 +11,10 @@ import {
     type MultiFileResult
 } from '../tools/filesystem.js';
 
-import {ServerResult} from '../types.js';
-import {withTimeout} from '../utils/withTimeout.js';
-import {createErrorResponse} from '../error-handlers.js';
-import {configManager} from '../config-manager.js';
+import { ServerResult } from '../types.js';
+import { withTimeout } from '../utils/withTimeout.js';
+import { createErrorResponse } from '../error-handlers.js';
+import { configManager } from '../config-manager.js';
 
 import {
     ReadFileArgsSchema,
@@ -64,16 +64,16 @@ export async function handleReadFile(args: unknown): Promise<ServerResult> {
         // Use the provided limits or defaults
         const offset = parsed.offset ?? 0;
         const length = parsed.length ?? defaultLimit;
-        
+
         const fileResult = await readFile(parsed.path, parsed.isUrl, offset, length);
-        
+
         if (fileResult.isImage) {
             // For image files, return as an image content type
             return {
                 content: [
-                    { 
-                        type: "text", 
-                        text: `Image file: ${parsed.path} (${fileResult.mimeType})\n` 
+                    {
+                        type: "text",
+                        text: `Image file: ${parsed.path} (${fileResult.mimeType})\n`
                     },
                     {
                         type: "image",
@@ -89,7 +89,7 @@ export async function handleReadFile(args: unknown): Promise<ServerResult> {
             };
         }
     };
-    
+
     // Execute with timeout at the handler level
     const result = await withTimeout(
         readFileOperation(),
@@ -110,7 +110,7 @@ export async function handleReadFile(args: unknown): Promise<ServerResult> {
 export async function handleReadMultipleFiles(args: unknown): Promise<ServerResult> {
     const parsed = ReadMultipleFilesArgsSchema.parse(args);
     const fileResults = await readMultipleFiles(parsed.paths);
-    
+
     // Create a text summary of all files
     const textSummary = fileResults.map(result => {
         if (result.error) {
@@ -121,13 +121,13 @@ export async function handleReadMultipleFiles(args: unknown): Promise<ServerResu
             return `${result.path}: Unknown type`;
         }
     }).join("\n");
-    
+
     // Create content items for each file
-    const contentItems: Array<{type: string, text?: string, data?: string, mimeType?: string}> = [];
-    
+    const contentItems: Array<{ type: string, text?: string, data?: string, mimeType?: string }> = [];
+
     // Add the text summary
     contentItems.push({ type: "text", text: textSummary });
-    
+
     // Add each file content
     for (const result of fileResults) {
         if (!result.error && result.content !== undefined) {
@@ -147,7 +147,7 @@ export async function handleReadMultipleFiles(args: unknown): Promise<ServerResu
             }
         }
     }
-    
+
     return { content: contentItems };
 }
 
@@ -161,7 +161,7 @@ export async function handleWriteFile(args: unknown): Promise<ServerResult> {
         // Get the line limit from configuration
         const config = await configManager.getConfig();
         const MAX_LINES = config.fileWriteLineLimit ?? 50; // Default to 50 if not set
-        
+
         // Strictly enforce line count limit
         const lines = parsed.content.split('\n');
         const lineCount = lines.length;
@@ -174,13 +174,13 @@ export async function handleWriteFile(args: unknown): Promise<ServerResult> {
 
         // Pass the mode parameter to writeFile
         await writeFile(parsed.path, parsed.content, parsed.mode);
-        
+
         // Provide more informative message based on mode
         const modeMessage = parsed.mode === 'append' ? 'appended to' : 'wrote to';
-        
+
         return {
-            content: [{ 
-                type: "text", 
+            content: [{
+                type: "text",
                 text: `Successfully ${modeMessage} ${parsed.path} (${lineCount} lines) ${errorMessage}`
             }],
         };
@@ -239,43 +239,61 @@ export async function handleMoveFile(args: unknown): Promise<ServerResult> {
 }
 
 /**
- * Handle search_files command
+ * Handle search_files command with improved performance and timeout handling
  */
 export async function handleSearchFiles(args: unknown): Promise<ServerResult> {
     try {
         const parsed = SearchFilesArgsSchema.parse(args);
-        const timeoutMs = parsed.timeoutMs || 30000; // 30 seconds default
-        
-        // Apply timeout at the handler level
-        const searchOperation = async () => {
-            return await searchFiles(parsed.path, parsed.pattern);
+
+        // Prepare search options with defaults
+        const searchOptions = {
+            maxResults: parsed.maxResults ?? 1000,
+            maxDepth: parsed.maxDepth ?? 10,
+            timeoutMs: parsed.timeoutMs ?? 10000, // Reduced default from 30s to 10s
+            excludeDirs: parsed.excludeDirs ?? ['node_modules', '.git', 'dist', '.cache', 'tmp']
         };
-        
-        // Use withTimeout at the handler level
-        const results = await withTimeout(
-            searchOperation(),
-            timeoutMs,
-            'File search operation',
-            [] // Empty array as default on timeout
-        );
-        
+
+        // The searchFiles function now handles timeout internally
+        const results = await searchFiles(parsed.path, parsed.pattern, searchOptions);
+
         if (results.length === 0) {
-            // Similar approach as in handleSearchCode
-            if (timeoutMs > 0) {
-                return {
-                    content: [{ type: "text", text: `No matches found or search timed out after ${timeoutMs}ms.` }],
-                };
-            }
             return {
-                content: [{ type: "text", text: "No matches found" }],
+                content: [{
+                    type: "text",
+                    text: `No matches found for pattern "${parsed.pattern}" in ${parsed.path}\n\nSearch options used:\n- Max results: ${searchOptions.maxResults}\n- Max depth: ${searchOptions.maxDepth}\n- Timeout: ${searchOptions.timeoutMs}ms\n- Excluded directories: ${searchOptions.excludeDirs.join(', ')}`
+                }],
             };
         }
-        
+
+        // Provide detailed results with performance info
+        let response = `Found ${results.length} matches for pattern "${parsed.pattern}":\n\n`;
+        response += results.join('\n');
+
+        // Add search info footer
+        if (results.length >= searchOptions.maxResults) {
+            response += `\n\n⚠️ Results limited to ${searchOptions.maxResults}. Use maxResults parameter to see more.`;
+        }
+        if (searchOptions.maxDepth < 20) {
+            response += `\n💡 Searched to depth ${searchOptions.maxDepth}. Use maxDepth parameter to search deeper.`;
+        }
+
         return {
-            content: [{ type: "text", text: results.join('\n') }],
+            content: [{ type: "text", text: response }],
         };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Enhanced error handling for timeout cases
+        if (errorMessage.includes('timed out')) {
+            return {
+                content: [{
+                    type: "text",
+                    text: `Search operation timed out. Try:\n- Reducing search scope with maxDepth parameter\n- Adding more excluded directories\n- Increasing timeout with timeoutMs parameter\n\nError: ${errorMessage}`
+                }],
+                isError: true
+            };
+        }
+
         return createErrorResponse(errorMessage);
     }
 }
@@ -288,11 +306,11 @@ export async function handleGetFileInfo(args: unknown): Promise<ServerResult> {
         const parsed = GetFileInfoArgsSchema.parse(args);
         const info = await getFileInfo(parsed.path);
         return {
-            content: [{ 
-                type: "text", 
+            content: [{
+                type: "text",
                 text: Object.entries(info)
                     .map(([key, value]) => `${key}: ${value}`)
-                    .join('\n') 
+                    .join('\n')
             }],
         };
     } catch (error) {

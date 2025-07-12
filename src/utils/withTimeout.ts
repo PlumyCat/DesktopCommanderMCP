@@ -28,7 +28,7 @@ export function withTimeout<T>(
                 } else {
                     // Keep the original operation name in the error message
                     // Telemetry sanitization happens at the capture level
-                    reject(`__ERROR__: ${operationName} timed out after ${timeoutMs / 1000} seconds`);
+                    reject(new Error(`${operationName} timed out after ${timeoutMs / 1000} seconds`));
                 }
             }
         }, timeoutMs);

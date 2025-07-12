@@ -1,16 +1,14 @@
 # Desktop Commander MCP
+
 ### Search, update, manage files and run terminal commands with AI
 
 [![npm downloads](https://img.shields.io/npm/dw/@wonderwhy-er/desktop-commander)](https://www.npmjs.com/package/@wonderwhy-er/desktop-commander)
 [![smithery badge](https://smithery.ai/badge/@wonderwhy-er/desktop-commander)](https://smithery.ai/server/@wonderwhy-er/desktop-commander)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow.svg)](https://www.buymeacoffee.com/wonderwhyer)
 
-
 [![Discord](https://img.shields.io/badge/Join%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/kQ27sNnZr7)
 
-
 Work with code and text, run processes, and automate tasks, going far beyond other AI editors - without API token costs.
-
 
 ![Desktop Commander MCP](https://raw.githubusercontent.com/wonderwhy-er/ClaudeComputerCommander/main/docs/vertical_video_mobile.mp4)
 
@@ -19,6 +17,7 @@ Work with code and text, run processes, and automate tasks, going far beyond oth
 </a>
 
 ## Table of Contents
+
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -69,20 +68,25 @@ Execute long-running terminal commands on your computer and manage processes thr
   - Detailed timestamps and arguments
 
 ## Installation
+
 First, ensure you've downloaded and installed the [Claude Desktop app](https://claude.ai/download) and you have [npm installed](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
 
 > **📋 Update & Uninstall Information:** Before choosing an installation option, note that **only Options 1 and 3 have automatic updates**. Options 2, 4, and 5 require manual updates. See the sections below for update and uninstall instructions for each option.
 
 ### Option 1: Install through npx ⭐ **Auto-Updates**
+
 Just run this in terminal:
+
 ```
 npx @wonderwhy-er/desktop-commander@latest setup
 ```
 
 For debugging mode (allows Node.js inspector connection):
+
 ```
 npx @wonderwhy-er/desktop-commander@latest setup --debug
 ```
+
 Restart Claude if running.
 
 **✅ Auto-Updates:** Yes - automatically updates when you restart Claude  
@@ -90,10 +94,13 @@ Restart Claude if running.
 **🗑️ Uninstall:** Run `npx @wonderwhy-er/desktop-commander@latest setup --uninstall`
 
 ### Option 2: Using bash script installer (macOS) ⭐ **Auto-Updates**
+
 For macOS users, you can use our automated bash installer which will check your Node.js version, install it if needed, and automatically configure Desktop Commander:
+
 ```
 curl -fsSL https://raw.githubusercontent.com/wonderwhy-er/DesktopCommanderMCP/refs/heads/main/install.sh | bash
 ```
+
 This script handles all dependencies and configuration automatically for a seamless setup experience.
 
 **✅ Auto-Updates:** Yes - requires manual updates  
@@ -113,6 +120,7 @@ npx -y @smithery/cli install @wonderwhy-er/desktop-commander --client claude
 **🗑️ Uninstall:** `npx -y @smithery/cli uninstall @wonderwhy-er/desktop-commander --client claude`
 
 ### Option 4: Add to claude_desktop_config manually ❌ **Manual Updates**
+
 Add this entry to your claude_desktop_config.json:
 
 - On Mac: `~/Library/Application\ Support/Claude/claude_desktop_config.json`
@@ -132,6 +140,7 @@ Add this entry to your claude_desktop_config.json:
   }
 }
 ```
+
 Restart Claude if running.
 
 **❌ Auto-Updates:** No - uses npx but config might not update automatically  
@@ -139,15 +148,19 @@ Restart Claude if running.
 **🗑️ Uninstall:** Remove the "desktop-commander" entry from your claude_desktop_config.json file
 
 ### Option 5: Checkout locally ❌ **Manual Updates**
+
 1. Clone and build:
+
 ```bash
 git clone https://github.com/wonderwhy-er/DesktopCommanderMCP.git
 cd DesktopCommanderMCP
 npm run setup
 ```
+
 Restart Claude if running.
 
 The setup command will:
+
 - Install dependencies
 - Build the server
 - Configure Claude's desktop app
@@ -160,14 +173,17 @@ The setup command will:
 ## Updating & Uninstalling Desktop Commander
 
 ### Automatic Updates (Options 1 & 3 only)
+
 **Options 1 (npx) and 3 (Smithery)** automatically update to the latest version whenever you restart Claude. No manual intervention needed.
 
 ### Manual Updates (Options 2, 4 & 5)
+
 - **Option 2 (bash installer):** Re-run the curl command
 - **Option 4 (manual config):** Usually automatic via npx, but re-add config entry if issues occur
 - **Option 5 (local checkout):** `cd DesktopCommanderMCP && git pull && npm run setup`
 
 ### Uninstalling Desktop Commander
+
 - **Option 1:** `npx @wonderwhy-er/desktop-commander@latest setup --uninstall`
 - **Option 2:** Remove MCP server entry from Claude config and delete any cloned repositories
 - **Option 3:** `npx -y @smithery/cli uninstall @wonderwhy-er/desktop-commander --client claude`
@@ -207,16 +223,19 @@ The server provides a comprehensive set of tools organized into several categori
 ### Quick Examples
 
 **Data Analysis:**
+
 ```
 "Analyze sales.csv and show top customers" → Claude runs Python code in memory
 ```
 
 **Remote Access:**
+
 ```
 "SSH to my server and check disk space" → Claude maintains SSH session
 ```
 
 **Development:**
+
 ```
 "Start Node.js and test this API" → Claude runs interactive Node session
 ```
@@ -224,6 +243,7 @@ The server provides a comprehensive set of tools organized into several categori
 ### Tool Usage Examples
 
 Search/Replace Block Format:
+
 ```
 filepath.ext
 <<<<<<< SEARCH
@@ -234,6 +254,7 @@ new content
 ```
 
 Example:
+
 ```
 src/main.js
 <<<<<<< SEARCH
@@ -256,6 +277,7 @@ The `edit_block` tool includes several enhancements for better reliability:
 When a search fails, you'll see detailed information about the closest match found, including similarity percentage, execution time, and character differences. All these details are automatically logged for later analysis using the fuzzy search log tools.
 
 ### URL Support
+
 - `read_file` can now fetch content from both local files and URLs
 - Example: `read_file` with `isUrl: true` parameter to read from web resources
 - Handles both text and image content from remote sources
@@ -290,6 +312,7 @@ Desktop Commander includes comprehensive logging for fuzzy search operations in 
 ### What Gets Logged
 
 Every fuzzy search operation logs:
+
 - **Search and found text**: The text you're looking for vs. what was found
 - **Similarity score**: How close the match is (0-100%)
 - **Execution time**: How long the search took
@@ -300,12 +323,14 @@ Every fuzzy search operation logs:
 ### Log Location
 
 Logs are automatically saved to:
+
 - **macOS/Linux**: `~/.claude-server-commander-logs/fuzzy-search.log`
 - **Windows**: `%USERPROFILE%\.claude-server-commander-logs\fuzzy-search.log`
 
 ### What You'll Learn
 
 The fuzzy search logs help you understand:
+
 1. **Why exact matches fail**: Common issues like whitespace differences, line endings, or character encoding
 2. **Performance patterns**: How search complexity affects execution time
 3. **File type issues**: Which file extensions commonly have matching problems
@@ -316,11 +341,14 @@ The fuzzy search logs help you understand:
 Desktop Commander now includes comprehensive logging for all tool calls:
 
 ### What Gets Logged
+
 - Every tool call is logged with timestamp, tool name, and arguments (sanitized for privacy)
 - Logs are rotated automatically when they reach 10MB in size
 
 ### Log Location
+
 Logs are saved to:
+
 - **macOS/Linux**: `~/.claude-server-commander/claude_tool_call.log`
 - **Windows**: `%USERPROFILE%\.claude-server-commander\claude_tool_call.log`
 
@@ -361,10 +389,12 @@ The configuration is saved to `config.json` in the server's working directory an
 The `fileWriteLineLimit` setting controls how many lines can be written in a single `write_file` operation (default: 50 lines). This limit exists for several important reasons:
 
 **Why the limit exists:**
+
 - **AIs are wasteful with tokens**: Instead of doing two small edits in a file, AIs may decide to rewrite the whole thing. We're trying to force AIs to do things in smaller changes as it saves time and tokens
 - **Claude UX message limits**: There are limits within one message and hitting "Continue" does not really work. What we're trying here is to make AI work in smaller chunks so when you hit that limit, multiple chunks have succeeded and that work is not lost - it just needs to restart from the last chunk
 
 **Setting the limit:**
+
 ```javascript
 // You can set it to thousands if you want
 set_config_value({ "key": "fileWriteLineLimit", "value": 1000 })
@@ -376,6 +406,7 @@ set_config_value({ "key": "fileWriteLineLimit", "value": 25 })
 **Maximum value**: You can set it to thousands if you want - there's no technical restriction.
 
 **Best practices**:
+
 - Keep the default (50) to encourage efficient AI behavior and avoid token waste
 - The system automatically suggests chunking when limits are exceeded
 - Smaller chunks mean less work lost when Claude hits message limits
@@ -425,23 +456,27 @@ npm run setup:debug
 ```
 
 This will:
+
 1. Configure Claude to use a separate "desktop-commander" server
 2. Enable Node.js inspector protocol with `--inspect-brk=9229` flag
 3. Pause execution at the start until a debugger connects
 4. Enable additional debugging environment variables
 
 To connect a debugger:
+
 - In Chrome, visit `chrome://inspect` and look for the Node.js instance
 - In VS Code, use the "Attach to Node Process" debug configuration
 - Other IDEs/tools may have similar "attach" options for Node.js debugging
 
 Important debugging notes:
+
 - The server will pause on startup until a debugger connects (due to the `--inspect-brk` flag)
 - If you don't see activity during debugging, ensure you're connected to the correct Node.js process
 - Multiple Node processes may be running; connect to the one on port 9229
 - The debug server is identified as "desktop-commander-debug" in Claude's MCP server list
 
 Troubleshooting:
+
 - If Claude times out while trying to use the debug server, your debugger might not be properly connected
 - When properly connected, the process will continue execution after hitting the first breakpoint
 - You can add additional breakpoints in your IDE once connected
@@ -449,16 +484,18 @@ Troubleshooting:
 ## Model Context Protocol Integration
 
 This project extends the MCP Filesystem Server to enable:
+
 - Local server support in Claude Desktop
 - Full system command execution
 - Process management
 - File operations
 - Code editing with search/replace blocks
 
-Created as part of exploring Claude MCPs: https://youtube.com/live/TlbjFDbl5Us
+Created as part of exploring Claude MCPs: <https://youtube.com/live/TlbjFDbl5Us>
 
 ## DONE
-- **20-05-2025 v0.1.40 Release** - Added audit logging for all tool calls, improved line-based file operations, enhanced edit_block with better prompting for smaller edits, added explicit telemetry opt-out prompting 
+
+- **20-05-2025 v0.1.40 Release** - Added audit logging for all tool calls, improved line-based file operations, enhanced edit_block with better prompting for smaller edits, added explicit telemetry opt-out prompting
 - **05-05-2025 Fuzzy Search Logging** - Added comprehensive logging system for fuzzy search operations with detailed analysis tools, character-level diffs, and performance metrics to help debug edit_block failures
 - **29-04-2025 Telemetry Opt Out through configuration** - There is now setting to disable telemetry in config, ask in chat
 - **23-04-2025 Enhanced edit functionality** - Improved format, added fuzzy search and multi-occurrence replacements, should fail less and use edit block more often
@@ -501,7 +538,6 @@ The following features are currently being explored:
     </ul>
   </div>
 </div>
-
 
 ### Supporters Hall of Fame
 
@@ -549,16 +585,20 @@ Visit our official website at [https://desktopcommander.app/](https://desktopcom
 Learn more about this project through these resources:
 
 ### Article
+
 [Claude with MCPs replaced Cursor & Windsurf. How did that happen?](https://wonderwhy-er.medium.com/claude-with-mcps-replaced-cursor-windsurf-how-did-that-happen-c1d1e2795e96) - A detailed exploration of how Claude with Model Context Protocol capabilities is changing developer workflows.
 
 ### Video
+
 [Claude Desktop Commander Video Tutorial](https://www.youtube.com/watch?v=ly3bed99Dy8) - Watch how to set up and use the Commander effectively.
 
 ### Publication at AnalyticsIndiaMag
+
 [![analyticsindiamag.png](testemonials%2Fanalyticsindiamag.png)
 This Developer Ditched Windsurf, Cursor Using Claude with MCPs](https://analyticsindiamag.com/ai-features/this-developer-ditched-windsurf-cursor-using-claude-with-mcps/)
 
 ### Community
+
 Join our [Discord server](https://discord.gg/kQ27sNnZr7) to get help, share feedback, and connect with other users.
 
 ## Testimonials
@@ -602,18 +642,23 @@ If you find this tool valuable for your workflow, please consider [supporting th
 Here are answers to some common questions. For a more comprehensive FAQ, see our [detailed FAQ document](FAQ.md).
 
 ### What is Desktop Commander?
+
 It's an MCP tool that enables Claude Desktop to access your file system and terminal, turning Claude into a versatile assistant for coding, automation, codebase exploration, and more.
 
 ### How is this different from Cursor/Windsurf?
+
 Unlike IDE-focused tools, Claude Desktop Commander provides a solution-centric approach that works with your entire OS, not just within a coding environment. Claude reads files in full rather than chunking them, can work across multiple projects simultaneously, and executes changes in one go rather than requiring constant review.
 
 ### Do I need to pay for API credits?
+
 No. This tool works with Claude Desktop's standard Pro subscription ($20/month), not with API calls, so you won't incur additional costs beyond the subscription fee.
 
 ### Does Desktop Commander automatically update?
+
 Yes, when installed through npx or Smithery, Desktop Commander automatically updates to the latest version when you restart Claude. No manual update process is needed.
 
 ### What are the most common use cases?
+
 - Exploring and understanding complex codebases
 - Generating diagrams and documentation
 - Automating tasks across your system
@@ -621,6 +666,7 @@ Yes, when installed through npx or Smithery, Desktop Commander automatically upd
 - Making surgical code changes with precise control
 
 ### I'm having trouble installing or using the tool. Where can I get help?
+
 Join our [Discord server](https://discord.gg/kQ27sNnZr7) for community support, check the [GitHub issues](https://github.com/wonderwhy-er/DesktopCommanderMCP/issues) for known problems, or review the [full FAQ](FAQ.md) for troubleshooting tips. You can also visit our [website FAQ section](https://desktopcommander.app#faq) for a more user-friendly experience. If you encounter a new issue, please consider [opening a GitHub issue](https://github.com/wonderwhy-er/DesktopCommanderMCP/issues/new) with details about your problem.
 
 ## Data Collection & Privacy

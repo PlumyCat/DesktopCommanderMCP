@@ -9,17 +9,20 @@ DesktopCommanderMCP collects limited telemetry data to help us understand usage 
 ### What We Collect
 
 #### Anonymous Client ID
+
 - **Anonymous client ID**: A randomly generated UUID that persists between sessions.
-    - **Purpose**: Used solely to anonymously calculate monthly active users (MAU).
-    - **Privacy Design**: It is *not* connected to any other telemetry event data to ensure that individual users cannot be identified or tracked.
+  - **Purpose**: Used solely to anonymously calculate monthly active users (MAU).
+  - **Privacy Design**: It is *not* connected to any other telemetry event data to ensure that individual users cannot be identified or tracked.
 
 #### Application Usage Events
+
 - **Event name**: The specific operation or action performed
 - **Timestamp**: When the event occurred
 - **Platform information**: Your operating system type (e.g., Windows, macOS, Linux)
 - **App version**: The version of DesktopCommanderMCP you're using
 
 #### Installation and Setup Information
+
 - **Node.js version**: Version of Node.js runtime
 - **NPM version**: Version of the NPM package manager
 - **Installation method**: How the tool was installed (npx, global, direct)
@@ -27,22 +30,26 @@ DesktopCommanderMCP collects limited telemetry data to help us understand usage 
 - **Setup status**: Success or failure of installation steps
 
 #### File Operation Metrics
+
 - **File extensions**: Types of files being accessed (e.g., .js, .py, .txt)
 - **Operation type**: Type of file operation (read, write, edit)
 - **Operation status**: Success or failure of operations
 
 #### Terminal Command Metrics
+
 - **Command type**: Categories of commands being run
 - **Command status**: Success or failure of command execution
 - **Execution time**: How long commands take to run
 
 #### Error Information
+
 - **Error types**: Categories of errors encountered
 - **Operation context**: Which operation encountered the error
 
 ### What We DO NOT Collect
 
 We explicitly DO NOT collect:
+
 - **File paths**: Full paths or filenames of accessed files
 - **File contents**: The actual data or code in your files
 - **Command arguments**: Arguments or parameters passed to terminal commands

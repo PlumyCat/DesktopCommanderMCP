@@ -27,7 +27,7 @@ export async function handleSearchCode(args: unknown): Promise<ServerResult> {
     const timeoutMs = parsed.timeoutMs || 30000; // 30 seconds default
 
     // Limit maxResults to prevent overwhelming responses
-    const safeMaxResults = parsed.maxResults ? Math.min(parsed.maxResults, 5000) : 2000; // Default to 2000 instead of 1000
+    const safeMaxResults = parsed.maxResults ? Math.min(parsed.maxResults, 1000) : 500; // Reduced limits for stability
 
     // Apply timeout at the handler level
     const searchOperation = async () => {
@@ -78,7 +78,7 @@ export async function handleSearchCode(args: unknown): Promise<ServerResult> {
     // Format the results in a VS Code-like format with early truncation
     let currentFile = "";
     let formattedResults = "";
-    const MAX_RESPONSE_SIZE = 900000; // 900KB limit - well below the 1MB API limit
+    const MAX_RESPONSE_SIZE = 500000; // 500KB limit - more conservative for stability
     let resultsProcessed = 0;
     let totalResults = results.length;
 

@@ -68,6 +68,9 @@ export const SearchFilesArgsSchema = z.object({
   path: z.string(),
   pattern: z.string(),
   timeoutMs: z.number().optional(),
+  maxResults: z.number().optional(),
+  maxDepth: z.number().optional(),
+  excludeDirs: z.array(z.string()).optional(),
 });
 
 export const GetFileInfoArgsSchema = z.object({
